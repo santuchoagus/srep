@@ -4,7 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"time"
-	"tui-app/app"
+
+	"github.com/santuchoagus/srep/app"
 )
 
 type SQLiteTopicStorage struct {
@@ -17,13 +18,26 @@ func NewSQLiteTopicStorage(db *sql.DB) (*SQLiteTopicStorage) {
 
 
 func (s *SQLiteTopicStorage) Create(ctx context.Context, t *app.Topic) error {
+	var query string = `
+		insert into topics
+		(id, tag, skipped, completed, skippable, last_recall)
+		values (?, ?, ?, ?, ?, ?);`
+
+	_, err := s.db.Exec(query, t.Id, t.Tag, t.Skipped, t.Completed, t.Skippable, t.LastRecall.Unix())
+	if err != nil {
+		return err
+	}
 	return nil
 }
 func (s *SQLiteTopicStorage) Update(ctx context.Context, t *app.Topic) error {
-	return nil
+	var query string = `update topics set flag=? where id=?;`
+	_, err := s.db.Exec(query, t.Tag, t.Id)
+	return err
 }
 func (s *SQLiteTopicStorage) Delete(ctx context.Context, id string) error {
-	return nil
+	var query string = `delete from topics where id=?;`
+	_, err := s.db.Exec(query, id)
+	return err
 }
 
 func (s *SQLiteTopicStorage) ByID(ctx context.Context, id string) (*app.Topic, error) {
@@ -38,6 +52,7 @@ func (s *SQLiteTopicStorage) List(ctx context.Context) (*[]app.Topic, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	
 	for rows.Next() {
 		var t app.Topic

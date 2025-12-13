@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS topics;
 CREATE TABLE topics (
     id TEXT PRIMARY KEY,
     tag TEXT NOT NULL,
