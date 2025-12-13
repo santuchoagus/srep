@@ -1,4 +1,4 @@
-module tui-app
+module github.com/santuchoagus/srep
 
 go 1.23.2
 

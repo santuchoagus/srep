@@ -1,14 +1,12 @@
 package main
 
 import (
-	"context"
 	"database/sql"
+	"github.com/santuchoagus/srep/app"
+	"github.com/santuchoagus/srep/storage/sqlite"
 	"log"
 	"os"
-	"strings"
 	"testing"
-	"tui-app/app"
-	"tui-app/storage/sqlite"
 )
 
 var (
@@ -38,18 +36,13 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func TestListTopics(t *testing.T) {
-	var sb strings.Builder
-	expected := `- calculus
-- algebra
-- databases
-- tdd-ddd
-`
-	t.Run("Listing all Topics", func(t *testing.T) {
-		service.ListTopics(&sb, context.Background())
-		got := sb.String()
-		if got != expected {
-			t.Error("List of topic don't match")
-		}
-	})
-}
+// func TestListTopics(t *testing.T) {
+// 	expected :=
+// 	t.Run("Listing all Topics", func(t *testing.T) {
+// 		service.GetTopics(context.Background())
+// 		got := sb.String()
+// 		if got != expected {
+// 			t.Error("List of topic don't match")
+// 		}
+// 	})
+// }

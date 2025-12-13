@@ -2,61 +2,75 @@ package app
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"regexp"
+	"time"
+
 	"github.com/urfave/cli/v3"
-    "fmt"
-    "os"
-    "log"
 )
+
+var ErrInvalidTagFormatting error = errors.New("Tags can only be of the form: foo, foo-bar, foo-bar-baz")
 
 func Srep(ctx context.Context) {
 
 }
 
-func StartCli() {
-    addCmd := &cli.Command{
-        Name: "add",
-        Usage: "Adds the topic with the tag if specificied",
-        Flags: []cli.Flag{
-            &cli.StringFlag{
-                Name: "tag",
-                Aliases: []string{"t"},
-                Usage: "Set the specific tag for the topic",
-            },
-        },
-        Action: actionAdd,
-    }
+func StartCli(service *TopicService) {
+	addCmd := &cli.Command{
+		Name:  "add",
+		Usage: "Adds the topic with the tag if specificied",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "tag",
+				Aliases: []string{"t"},
+				Usage:   "Set the specific tag for the topic",
+			},
+		},
+		Action: actionAdd(service),
+	}
 
-    bucketCmd := &cli.Command{
-        Name: "bucket",
-        Aliases: []string{"b"},
-        Usage: "Takes a topic from the bucket, reusing this command skip it and increment the topic's skipped count",
-        Action: actionBucket,
-    }
+	removeCmd := &cli.Command{
+		Name:    "remove",
+		Aliases: []string{"rm"},
+		Usage:   "Remove a topic from the database and its associated data",
+		Action:  actionRemove(service),
+	}
 
-    listCmd := &cli.Command{
-        Name: "list",
-        Aliases: []string{"ls"},
-        Usage: "Lists every topic",
-        Action: actionList,
-    }
+	bucketCmd := &cli.Command{
+		Name:    "bucket",
+		Aliases: []string{"b"},
+		Usage:   "Takes a topic from the bucket, reusing this command skip it and increment the topic's skipped count",
+		Action:  actionBucket,
+	}
+
+	listCmd := &cli.Command{
+		Name:    "list",
+		Aliases: []string{"ls"},
+		Usage:   "Lists every topic",
+		Action:  actionList(service),
+	}
 
 	cmd := &cli.Command{
-        Commands: []*cli.Command{
-            addCmd,
-            bucketCmd,
-            listCmd,
-        },
+		Commands: []*cli.Command{
+			addCmd,
+			removeCmd,
+			bucketCmd,
+			listCmd,
+		},
 		Name:  "srep",
 		Usage: "Spaced repetition tool",
-        Arguments: []cli.Argument{
-            &cli.StringArg{
-                Name: "topic",
-            },
-        },
+		Arguments: []cli.Argument{
+			&cli.StringArg{
+				Name: "topic",
+			},
+		},
 
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-            fmt.Println("Spaced repetition tool: \"srep help\" to show help\n<!> Current topic: \"Topic\"")
-            return nil
+			fmt.Println("Spaced repetition tool: \"srep help\" to show help\n<!> Current topic: \"Topic\"")
+			return nil
 		},
 	}
 
@@ -66,34 +80,89 @@ func StartCli() {
 }
 
 func actionBucket(ctx context.Context, cmd *cli.Command) error {
-    if !cmd.Bool("bucket") {
-        return nil
-    }
-    if cmd.NArg() > 0 {
-        fmt.Println("Bucket command take no arguments")
-        return nil
-    }
-    return nil
+	if !cmd.Bool("bucket") {
+		return nil
+	}
+
+	if cmd.NArg() > 0 {
+		fmt.Println("Bucket command take no arguments")
+		return nil
+	}
+
+	return nil
 }
 
-func actionAdd(ctx context.Context, cmd *cli.Command) error {
-    tag := cmd.String("tag")
-    args := cmd.Args().Slice()
+func actionRemove(service *TopicService) cli.ActionFunc {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		args := cmd.Args().Slice()
 
-    if len(args) == 0 {
-        fmt.Println("Unespecified topics to add")
-        return nil
-    }
-    
-    fmt.Println(tag, args)
-    return nil
+		for i, arg := range args {
+			err := service.RemoveTopic(ctx, arg)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%d. skipped topic \"%s\" is not a valid topic\n", i+1, arg)
+				continue
+			}
+		}
+		fmt.Fprintf(os.Stdout, "ok\n")
+		return nil
+	}
 }
 
-func actionList(ctx context.Context, cmd *cli.Command) error {
-    if cmd.NArg() > 0 {
-        fmt.Println("List command take no arguments")
-        return nil
-    }
+func actionAdd(service *TopicService) cli.ActionFunc {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		tag := cmd.String("tag")
+		args := cmd.Args().Slice()
 
-    return nil
+		re := regexp.MustCompile(`^[a-z]+(-[a-z]+)*$`)
+		if tag != "" && !re.MatchString(tag) {
+			return ErrInvalidTagFormatting
+		}
+
+		if len(args) == 0 {
+			fmt.Println("Unespecified topics to add")
+			return nil
+		}
+
+		for _, arg := range args {
+			err := service.Add(ctx, &Topic{
+				Id:         arg,
+				Tag:        tag,
+				Skippable:  true,
+				LastRecall: time.Now(),
+			})
+
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Topic \"%s\" cannot be added: %s\n", arg, err.Error())
+				continue
+			}
+			fmt.Fprintf(os.Stdout, "Topic \"%s\" added\n", arg)
+		}
+
+		fmt.Println(tag, args)
+		return nil
+	}
+}
+
+func actionList(service *TopicService) cli.ActionFunc {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		if cmd.NArg() > 0 {
+			fmt.Println("List command take no arguments")
+			return nil
+		}
+		data, err := service.GetTopics(ctx)
+
+		if err != nil || data == nil {
+			log.Fatal("Couldn't list topics, err: ", err)
+		}
+
+		if len(*data) == 0 {
+			fmt.Fprintf(os.Stdout, "No topics in the database\n")
+			return nil
+		}
+
+		for _, topic := range *data {
+			fmt.Fprintf(os.Stdout, "- %s\n", topic.Id)
+		}
+		return nil
+	}
 }

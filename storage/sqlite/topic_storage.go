@@ -12,10 +12,9 @@ type SQLiteTopicStorage struct {
 	db *sql.DB
 }
 
-func NewSQLiteTopicStorage(db *sql.DB) (*SQLiteTopicStorage) {
+func NewSQLiteTopicStorage(db *sql.DB) *SQLiteTopicStorage {
 	return &SQLiteTopicStorage{db: db}
 }
-
 
 func (s *SQLiteTopicStorage) Create(ctx context.Context, t *app.Topic) error {
 	var query string = `
@@ -53,7 +52,7 @@ func (s *SQLiteTopicStorage) List(ctx context.Context) (*[]app.Topic, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	for rows.Next() {
 		var t app.Topic
 		var lastRecall int64
@@ -68,13 +67,12 @@ func (s *SQLiteTopicStorage) List(ctx context.Context) (*[]app.Topic, error) {
 		)
 
 		if err != nil {
-        	return nil, err
-   		}
+			return nil, err
+		}
 
 		t.LastRecall = time.Unix(lastRecall, 0)
 		ret = append(ret, t)
 	}
-
 
 	return &ret, nil
 }
