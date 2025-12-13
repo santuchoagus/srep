@@ -1,0 +1,4 @@
+*.env
+*.db
+TODO.md
+.DS_STore
