@@ -11,4 +11,6 @@ type TopicStore interface {
 	Delete(ctx context.Context, id string) error
 	ByID(ctx context.Context, id string) (*Topic, error)
 	List(ctx context.Context) (*[]Topic, error)
+	GetCurrentTopic(ctx context.Context) (*Topic, error)
+	SetCurrentTopic(ctx context.Context, id string) error
 }

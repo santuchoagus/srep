@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"regexp"
 	"time"
@@ -12,7 +13,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-var ErrInvalidTagFormatting error = errors.New("Tags can only be of the form: foo, foo-bar, foo-bar-baz")
+var ErrInvalidTagFormatting error = errors.New("tags can only be of the form: foo, foo-bar, foo-bar-baz")
 
 func Srep(ctx context.Context) {
 
@@ -43,7 +44,14 @@ func StartCli(service *TopicService) {
 		Name:    "bucket",
 		Aliases: []string{"b"},
 		Usage:   "Takes a topic from the bucket, reusing this command skip it and increment the topic's skipped count",
-		Action:  actionBucket,
+		Action:  actionBucket(service),
+	}
+
+	completeCmd := &cli.Command{
+		Name:    "complete",
+		Aliases: []string{"c"},
+		Usage:   "Removes the topic from current topic and reduces significantly the topic's skipped count",
+		Action:  actionComplete(service),
 	}
 
 	listCmd := &cli.Command{
@@ -58,6 +66,7 @@ func StartCli(service *TopicService) {
 			addCmd,
 			removeCmd,
 			bucketCmd,
+			completeCmd,
 			listCmd,
 		},
 		Name:  "srep",
@@ -69,7 +78,16 @@ func StartCli(service *TopicService) {
 		},
 
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			fmt.Println("Spaced repetition tool: \"srep help\" to show help\n<!> Current topic: \"Topic\"")
+			fmt.Fprintf(os.Stdout, "Spaced repetition tool: \"srep help\" to show help\n")
+
+			t, err := service.GetCurrentTopic(ctx)
+
+			if err != nil {
+				fmt.Fprintf(os.Stdout, "No current topic set, use \"srep bucket\" to roll a topic\n")
+				return nil
+			}
+
+			fmt.Fprintf(os.Stdout, "<!> Current topic: \"%s\"\n", t.Id)
 			return nil
 		},
 	}
@@ -79,17 +97,77 @@ func StartCli(service *TopicService) {
 	}
 }
 
-func actionBucket(ctx context.Context, cmd *cli.Command) error {
-	if !cmd.Bool("bucket") {
+func actionBucket(service *TopicService) cli.ActionFunc {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		if cmd.NArg() > 0 {
+			fmt.Println("Bucket command take no arguments")
+			return nil
+		}
+
+		topics, err := service.GetTopics(ctx)
+		if err != nil {
+			return nil
+		}
+
+		if len(*topics) == 0 {
+			fmt.Println("No topics to select from")
+			return nil
+		}
+
+		var selectedTopic Topic
+
+		total := 0
+		for _, topic := range *topics {
+			total += topic.Skipped
+		}
+
+		if total == 0 {
+			r := rand.Intn(len(*topics))
+			selectedTopic = (*topics)[r]
+		} else {
+			r := rand.Intn(total)
+			fmt.Println("r ", r)
+			for _, topic := range *topics {
+				if r < topic.Skipped {
+					selectedTopic = topic
+					break
+				}
+				r -= topic.Skipped
+			}
+		}
+
+		oldTopic, err := service.store.GetCurrentTopic(ctx)
+		if err == nil {
+			oldTopic.Skipped++
+			service.store.Update(ctx, oldTopic)
+		}
+
+		fmt.Fprintf(os.Stdout, "New topic: \"%s\"\n", selectedTopic.Id)
+
+		service.store.SetCurrentTopic(ctx, selectedTopic.Id)
 		return nil
 	}
+}
 
-	if cmd.NArg() > 0 {
-		fmt.Println("Bucket command take no arguments")
+func actionComplete(service *TopicService) cli.ActionFunc {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		if cmd.NArg() > 0 {
+			fmt.Println("Complete command take no arguments")
+			return nil
+		}
+
+		topic, err := service.GetCurrentTopic(ctx)
+		if err == nil && topic.Id != "" {
+			topic.Skipped = 1
+			service.store.Update(ctx, topic)
+		} else {
+			fmt.Fprintf(os.Stderr, "No current topic to complete\n")
+			return nil
+		}
+		service.SetCurrentTopic(ctx, "")
+		fmt.Fprintf(os.Stdout, "Completed topic \"%s\"\n", topic.Id)
 		return nil
 	}
-
-	return nil
 }
 
 func actionRemove(service *TopicService) cli.ActionFunc {
@@ -127,6 +205,7 @@ func actionAdd(service *TopicService) cli.ActionFunc {
 			err := service.Add(ctx, &Topic{
 				Id:         arg,
 				Tag:        tag,
+				Skipped:    1,
 				Skippable:  true,
 				LastRecall: time.Now(),
 			})
@@ -137,8 +216,6 @@ func actionAdd(service *TopicService) cli.ActionFunc {
 			}
 			fmt.Fprintf(os.Stdout, "Topic \"%s\" added\n", arg)
 		}
-
-		fmt.Println(tag, args)
 		return nil
 	}
 }

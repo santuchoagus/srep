@@ -41,6 +41,10 @@ func (s *TopicService) RemoveTopic(ctx context.Context, id string) error {
 	return nil
 }
 
+func (s *TopicService) GetCurrentTopic(ctx context.Context) (*Topic, error) {
+	return s.store.GetCurrentTopic(ctx)
+}
+
 func (s *TopicService) GetTopics(ctx context.Context) (*[]Topic, error) {
 	return s.store.List(ctx)
 }
@@ -60,6 +64,13 @@ func (s *TopicService) ListTopicsVerbose(w io.Writer, ctx context.Context) {
 		fmt.Fprintf(w, "- %s %s\n", topic.Id, topic.LastRecall.Format(time.DateOnly))
 	}
 
+}
+
+func (s *TopicService) SetCurrentTopic(ctx context.Context, id string) {
+	err := s.store.SetCurrentTopic(ctx, id)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func isValidId(id string) bool {

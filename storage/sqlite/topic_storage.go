@@ -29,8 +29,8 @@ func (s *SQLiteTopicStorage) Create(ctx context.Context, t *app.Topic) error {
 	return nil
 }
 func (s *SQLiteTopicStorage) Update(ctx context.Context, t *app.Topic) error {
-	var query string = `update topics set flag=? where id=?;`
-	_, err := s.db.Exec(query, t.Tag, t.Id)
+	var query string = `update topics set tag=?, skipped=? where id=?;`
+	_, err := s.db.Exec(query, t.Tag, t.Skipped, t.Id)
 	return err
 }
 func (s *SQLiteTopicStorage) Delete(ctx context.Context, id string) error {
@@ -40,7 +40,20 @@ func (s *SQLiteTopicStorage) Delete(ctx context.Context, id string) error {
 }
 
 func (s *SQLiteTopicStorage) ByID(ctx context.Context, id string) (*app.Topic, error) {
-	return nil, nil
+	var t app.Topic
+	var query string = `select * from topics where id=?;`
+	var lastRecall int64
+	row := s.db.QueryRowContext(ctx, query, id)
+	err := row.Scan(
+		&t.Id,
+		&t.Tag,
+		&t.Skipped,
+		&t.Completed,
+		&t.Skippable,
+		&lastRecall,
+	)
+	t.LastRecall = time.Unix(lastRecall, 0)
+	return &t, err
 }
 
 func (s *SQLiteTopicStorage) List(ctx context.Context) (*[]app.Topic, error) {
@@ -75,4 +88,31 @@ func (s *SQLiteTopicStorage) List(ctx context.Context) (*[]app.Topic, error) {
 	}
 
 	return &ret, nil
+}
+
+func (s *SQLiteTopicStorage) GetCurrentTopic(ctx context.Context) (*app.Topic, error) {
+	var query string = `select * from global_state where key='CURRENT_TOPIC';`
+	row := s.db.QueryRowContext(ctx, query)
+
+	var GlobalCurrentTopic string
+	var key string
+	err := row.Scan(&key, &GlobalCurrentTopic)
+
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := s.ByID(ctx, GlobalCurrentTopic)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return t, err
+}
+
+func (s *SQLiteTopicStorage) SetCurrentTopic(ctx context.Context, id string) error {
+	var query string = `update global_state set value=? where key=?;`
+	_, err := s.db.Exec(query, id, "CURRENT_TOPIC")
+	return err
 }

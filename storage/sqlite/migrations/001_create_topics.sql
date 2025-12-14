@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS topics;
 CREATE TABLE topics (
     id TEXT PRIMARY KEY,
     tag TEXT NOT NULL,
-    skipped INTEGER NOT NULL DEFAULT 0,
+    skipped INTEGER NOT NULL DEFAULT 1,
     completed INTEGER NOT NULL DEFAULT 0,
     skippable INTEGER NOT NULL DEFAULT 1,
     last_recall INTEGER
