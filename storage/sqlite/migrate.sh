@@ -1,7 +1,5 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-rm "$HOME/.local/share/srep/app.db"
-
 mkdir -p "$HOME/.local/share/srep"
 touch "$HOME/.local/share/srep/app.db"
 

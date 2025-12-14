@@ -7,4 +7,4 @@ CREATE TABLE global_state (
 INSERT INTO global_state
 (key, value)
 VALUES
-('CURRENT_TOPIC', 'foo');
+('CURRENT_TOPIC', '');

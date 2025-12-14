@@ -25,7 +25,6 @@ func (s *TopicService) Add(ctx context.Context, t *Topic) error {
 		return ErrInvalidIdFormatting
 	}
 	err := s.store.Create(ctx, t)
-	fmt.Println(err)
 	if err != nil {
 		return err
 	}

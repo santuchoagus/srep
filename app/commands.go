@@ -22,12 +22,12 @@ func Srep(ctx context.Context) {
 func StartCli(service *TopicService) {
 	addCmd := &cli.Command{
 		Name:  "add",
-		Usage: "Adds the topic with the tag if specificied",
+		Usage: "Adds a topic with the specified tag",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "tag",
 				Aliases: []string{"t"},
-				Usage:   "Set the specific tag for the topic",
+				Usage:   "Sets the specific tag for the topic",
 			},
 		},
 		Action: actionAdd(service),
@@ -36,28 +36,28 @@ func StartCli(service *TopicService) {
 	removeCmd := &cli.Command{
 		Name:    "remove",
 		Aliases: []string{"rm"},
-		Usage:   "Remove a topic from the database and its associated data",
+		Usage:   "Removes a topic from the database along with its associated data",
 		Action:  actionRemove(service),
 	}
 
 	bucketCmd := &cli.Command{
 		Name:    "bucket",
 		Aliases: []string{"b"},
-		Usage:   "Takes a topic from the bucket, reusing this command skip it and increment the topic's skipped count",
+		Usage:   "Selects a topic from the bucket, reusing this command skips it and increments the topic's skipped count",
 		Action:  actionBucket(service),
 	}
 
 	completeCmd := &cli.Command{
 		Name:    "complete",
 		Aliases: []string{"c"},
-		Usage:   "Removes the topic from current topic and reduces significantly the topic's skipped count",
+		Usage:   "Clears the current topic and significantly reduces its skipped count",
 		Action:  actionComplete(service),
 	}
 
 	listCmd := &cli.Command{
 		Name:    "list",
 		Aliases: []string{"ls"},
-		Usage:   "Lists every topic",
+		Usage:   "Lists all topics",
 		Action:  actionList(service),
 	}
 
@@ -78,12 +78,12 @@ func StartCli(service *TopicService) {
 		},
 
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			fmt.Fprintf(os.Stdout, "Spaced repetition tool: \"srep help\" to show help\n")
+			fmt.Fprintf(os.Stdout, "Spaced repetition tool.\nUse \"srep help\" to show available commands.\n")
 
 			t, err := service.GetCurrentTopic(ctx)
 
 			if err != nil {
-				fmt.Fprintf(os.Stdout, "No current topic set, use \"srep bucket\" to roll a topic\n")
+				fmt.Fprintf(os.Stdout, "No current topic set - Use \"srep bucket\" to roll a topic\n")
 				return nil
 			}
 
