@@ -8,3 +8,4 @@
 - Add tests.
 - Support building for other platforms + standalone binaries.
 - Add a configuration step before building to allow customization of paths etc.
+- Removing naming constraint on ids, and supporting `or` keyword, e.g. `pencil-draw-or-pixelart` will display `pencil-draw or pixelart` which is a single topic, and removing any of them separates the id as `pencil-draw` or `pixelart`.
