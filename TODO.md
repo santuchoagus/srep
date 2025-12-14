@@ -1,0 +1,10 @@
+- `srep <topic> -n <tiny note>` adds an optional note to a topic as a reminder when displaying it in `srep`.
+- `srep bucket -t <tag>` selects a topic from the bucket with pecific tags (maybe simply `srep bucket [tags]`?).
+- `srep add -U <n>` (marks a topic as unskippable `n` times?).
+- Improve the `ls` command and upgrade its output display.
+- Implement a more sophisticated algorithm for selecting the next topic.
+- Allow custom algorithms for topic selection and counter increments (possibly using custom float weights for scripting), with a small DSL for fine grained tuning and defaults for regular users.
+- Refactor and further decouple the current codebase.
+- Add tests.
+- Support building for other platforms + standalone binaries.
+- Add a configuration step before building to allow customization of paths etc.

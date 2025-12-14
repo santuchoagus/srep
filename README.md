@@ -14,3 +14,4 @@ Help can be viewed at any time with `srep help`. There is currently no logic for
 - `complete` Clears the current topic and significantly reduces its skipped count
 - `list` Lists all topics
 
+Future plans for this tiny project are listed in the [TODO](TODO.md) file.
